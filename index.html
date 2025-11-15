@@ -22,22 +22,33 @@
         max-width: 1200px;
         margin: 0 auto;
     }
-    .thumb {
-        position: relative;
-        overflow: hidden;
-        cursor: pointer;
-        border-radius: 8px;
-        background: #fff;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    .thumb img {
-        width: 100%;
-        transition: transform 0.3s ease;
-        display: block;
-    }
-    .thumb:hover img {
-        transform: scale(1.1);
-    }
+.thumb {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    padding-bottom: 5px; /* space for title */
+}
+
+.thumb img {
+    width: 100%;
+    transition: transform 0.3s ease;
+    display: block;
+}
+
+.thumb:hover img {
+    transform: scale(1.1);
+}
+
+.thumb .title {
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    padding-top: 6px;
+}
+
     .title {
         text-align: center;
         margin-top: 10px;
@@ -99,13 +110,14 @@ photos.forEach(file => {
     title.innerText = formatTitle(file);
 
     thumbDiv.appendChild(img);
+    thumbDiv.appendChild(title);
     gallery.appendChild(thumbDiv);
-    gallery.appendChild(title);
 
     thumbDiv.addEventListener("click", () => {
         viewer.innerHTML = `<img src='./photos/${file}' />`;
     });
 });
+
 </script>
 </body>
 </html>
