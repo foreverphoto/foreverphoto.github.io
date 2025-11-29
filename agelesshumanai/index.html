@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AgelessHuman AI — Chat</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#0f1720; --muted:#9aa6b2; --accent:#7dd3fc;
+    --bubble-user:#09324a; --bubble-ai:#0b1220; --text:#e6eef6;
+  }
+  [data-theme="light"]{
+    --bg:#f6f8fb; --panel:#ffffff; --muted:#556370; --accent:#0ea5b7;
+    --bubble-user:#e6f3f6; --bubble-ai:#f2f6fa; --text:#0b1220;
+  }
+  html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+  body{background:linear-gradient(180deg,var(--bg),#071018);color:var(--text);display:flex;align-items:center;justify-content:center;padding:24px;}
+  .app{width:100%;max-width:980px;height:820px;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(2,6,23,.6);display:grid;grid-template-columns:320px 1fr;}
+  .left{background:linear-gradient(180deg,var(--panel),#07101a);padding:18px;display:flex;flex-direction:column;gap:12px;}
+  .brand{font-weight:700;font-size:18px;display:flex;align-items:center;gap:10px}
+  .brand .logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#60a5fa);display:flex;align-items:center;justify-content:center;color:#032; font-weight:700;}
+  .controls{margin-top:8px;display:flex;gap:8px;flex-direction:column}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,.06);padding:8px;border-radius:8px;color:var(--text);cursor:pointer;font-weight:600}
+  .small{font-size:13px;color:var(--muted)}
+  .history{flex:1;overflow:auto;padding-top:6px;display:flex;flex-direction:column;gap:8px}
+  .history .item{padding:8px;border-radius:8px;background:rgba(255,255,255,.02);font-size:13px;color:var(--muted)}
+  .right{display:flex;flex-direction:column;background:linear-gradient(180deg,#07101a, #071018);padding:20px;gap:12px}
+  .chat{flex:1;overflow:auto;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+  .msg{max-width:75%;padding:12px;border-radius:12px;margin-bottom:10px;line-height:1.5}
+  .user{margin-left:auto;background:linear-gradient(180deg,var(--bubble-user), rgba(255,255,255,.02));color:var(--text);border:1px solid rgba(255,255,255,.02)}
+  .ai{background:linear-gradient(180deg,var(--bubble-ai), rgba(255,255,255,.02));color:var(--text);border:1px solid rgba(255,255,255,.02)}
+  .meta{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .inputbar{display:flex;gap:8px;padding-top:8px}
+  .input{flex:1;background:transparent;border:1px solid rgba(255,255,255,.06);padding:12px;border-radius:10px;color:var(--text);min-height:48px;resize:none}
+  .send{padding:10px 14px;border-radius:10px;background:var(--accent);border:none;color:#022;font-weight:700;cursor:pointer}
+  .smallmuted{font-size:12px;color:var(--muted)}
+  .key-row{display:flex;gap:8px;align-items:center}
+  .linkish{background:none;border:0;color:var(--accent);cursor:pointer;font-weight:700}
+  .notice{padding:8px;border-radius:8px;background:rgba(125,211,252,.06);color:var(--accent);font-size:13px}
+  .danger{background:rgba(255,60,60,.06);color:#ff8b8b}
+  footer{font-size:12px;color:var(--muted);text-align:center;padding:8px}
+  @media (max-width:880px){ .app{grid-template-columns:1fr; height:100%;} .left{order:2} }
+</style>
+</head>
+<body data-theme="dark">
+<div class="app" role="application" aria-label="AgelessHuman AI chat app">
+  <aside class="left" aria-label="Sidebar">
+    <div class="brand">
+      <div class="logo">AH</div>
+      <div>
+        AgelessHuman AI<br><span class="small">Personal Chat UI</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="key-row">
+        <button class="btn" id="btnKey">Enter API Key</button>
+        <button class="btn" id="btnClear">Clear Key</button>
+      </div>
+      <div class="key-row">
+        <button class="btn" id="btnDark">Toggle Theme</button>
+        <button class="btn" id="btnExport">Export Chat</button>
+      </div>
+      <div class="smallmuted">Model:
+        <select id="selModel" style="background:transparent;border:0;color:var(--text);font-weight:700">
+          <option value="gpt-4o-mini">gpt-4o-mini</option>
+          <option value="gpt-4o">gpt-4o</option>
+          <option value="gpt-3.5-turbo" selected>gpt-3.5-turbo</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="history" id="history" aria-live="polite">
+      <!-- simple conversation titles -->
+    </div>
+
+    <div class="smallmuted" style="margin-top:8px">
+      <div>Hosted: <strong>agelesshuman.github.io</strong></div>
+      <div style="margin-top:6px" class="smallmuted">
+        Note: Users must paste their own OpenAI API key. If the browser cannot reach OpenAI (CORS/network error), use a proxy (Cloudflare Worker or similar).
+      </div>
+    </div>
+
+    <footer>AgelessHuman • Local-only keys • No server required</footer>
+  </aside>
+
+  <main class="right">
+    <div class="meta">
+      <div>
+        <strong id="chatTitle">AgelessHuman AI</strong><br>
+        <span class="smallmuted" id="status">Ready</span>
+      </div>
+      <div class="smallmuted">Your chat, your key</div>
+    </div>
+
+    <div class="chat" id="chat" role="log" aria-live="polite"></div>
+
+    <div class="inputbar" role="form" aria-label="Message composer">
+      <textarea id="prompt" class="input" placeholder="Type a message..."></textarea>
+      <button class="send" id="sendBtn">Send</button>
+    </div>
+
+    <div class="smallmuted" style="display:flex;justify-content:space-between;gap:12px">
+      <div id="usageNote" class="smallmuted">Streaming: ON</div>
+      <div><button class="linkish" id="clearChat">Clear Chat</button></div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal (simple) -->
+<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.6);align-items:center;justify-content:center">
+  <div style="background:var(--panel);padding:18px;border-radius:10px;min-width:320px;max-width:92%;box-shadow:0 8px 30px rgba(0,0,0,.6)">
+    <h3 style="margin:0 0 8px 0">Enter OpenAI API Key</h3>
+    <p class="smallmuted" style="margin:0 0 10px 0">Paste your key (starts with <code>sk-</code>). It will be saved only in your browser (localStorage).</p>
+    <input id="apiInput" type="password" placeholder="sk-..." style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.04);background:transparent;color:var(--text)">
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+      <button class="btn" id="btnCancel">Cancel</button>
+      <button class="btn" id="btnSave">Save Key</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* AgelessHuman AI — single-file client Chat UI
+   Usage: Users paste their own OpenAI API key (stored in localStorage).
+   If direct calls fail due to CORS/network, use a proxy endpoint and set OPENAI_PROXY_URL below.
+*/
+
+const DOM = {
+  modal: document.getElementById('modal'),
+  btnKey: document.getElementById('btnKey'),
+  btnSave: document.getElementById('btnSave'),
+  btnCancel: document.getElementById('btnCancel'),
+  apiInput: document.getElementById('apiInput'),
+  btnClear: document.getElementById('btnClear'),
+  btnDark: document.getElementById('btnDark'),
+  sendBtn: document.getElementById('sendBtn'),
+  prompt: document.getElementById('prompt'),
+  chat: document.getElementById('chat'),
+  history: document.getElementById('history'),
+  status: document.getElementById('status'),
+  selModel: document.getElementById('selModel'),
+  clearChat: document.getElementById('clearChat'),
+  btnExport: document.getElementById('btnExport'),
+  usageNote: document.getElementById('usageNote')
+};
+
+const STORAGE = {
+  key: 'ageless_openai_key_v1',
+  chat: 'ageless_chat_v1',
+  theme: 'ageless_theme_v1'
+};
+
+// Optional: if you want to force all requests through a proxy, set it here.
+// Example: const OPENAI_PROXY_URL = 'https://your-worker.example.com/.netlify/functions/openai';
+const OPENAI_PROXY_URL = ''; // <-- leave empty to call OpenAI directly
+
+// Utility
+function setStatus(t){ DOM.status.textContent = t; }
+function showModal(){ DOM.modal.style.display='flex'; DOM.apiInput.focus(); }
+function hideModal(){ DOM.modal.style.display='none'; DOM.apiInput.value=''; }
+
+function saveKey(k){
+  if(!k || !k.startsWith('sk-')) { alert('Please paste a valid key that starts with sk-'); return; }
+  localStorage.setItem(STORAGE.key, k);
+  setStatus('API key saved (local only)');
+  hideModal();
+}
+
+function loadKey(){ return localStorage.getItem(STORAGE.key) || ''; }
+function clearKey(){ localStorage.removeItem(STORAGE.key); setStatus('API key cleared'); }
+
+function saveChat(data){ localStorage.setItem(STORAGE.chat, JSON.stringify(data||[])); }
+function loadChat(){ try{ return JSON.parse(localStorage.getItem(STORAGE.chat)||'[]'); }catch(e){return [];} }
+
+function saveTheme(t){ localStorage.setItem(STORAGE.theme, t); document.body.setAttribute('data-theme', t); }
+function loadTheme(){ const t = localStorage.getItem(STORAGE.theme)||'dark'; document.body.setAttribute('data-theme', t); }
+
+function addHistoryItem(title){ const el = document.createElement('div'); el.className='item'; el.textContent = title + ' • ' + new Date().toLocaleString(); el.onclick = ()=>{ alert('History navigation not implemented in this simple demo.'); }; DOM.history.prepend(el); }
+
+function renderChat(){
+  DOM.chat.innerHTML='';
+  const history = loadChat();
+  history.forEach(m=>{
+    const d = document.createElement('div');
+    d.className = 'msg ' + (m.role==='user' ? 'user' : 'ai');
+    d.innerHTML = `<div>${m.content}</div><div style="font-size:11px;color:var(--muted);margin-top:6px">${m.role} • ${new Date(m.t||Date.now()).toLocaleTimeString()}</div>`;
+    DOM.chat.appendChild(d);
+  });
+  DOM.chat.scrollTop = DOM.chat.scrollHeight;
+}
+
+function clearChatStorage(){ localStorage.removeItem(STORAGE.chat); renderChat(); setStatus('Chat cleared'); }
+
+async function sendMessage(){
+  const prompt = DOM.prompt.value.trim();
+  if(!prompt) return;
+  const key = loadKey();
+  if(!key && !OPENAI_PROXY_URL){ alert('Please enter your OpenAI API key first.'); showModal(); return; }
+
+  // Append user message locally
+  const history = loadChat();
+  history.push({role:'user', content:prompt, t:Date.now()});
+  saveChat(history); renderChat(); DOM.prompt.value=''; addHistoryItem('You: ' + prompt.substring(0,40));
+  setStatus('Thinking…');
+
+  // Add placeholder AI message element for streaming
+  const aiDiv = document.createElement('div');
+  aiDiv.className='msg ai';
+  aiDiv.innerHTML = '<div id="stream">...</div><div style="font-size:11px;color:var(--muted);margin-top:6px">ai • ' + new Date().toLocaleTimeString() + '</div>';
+  DOM.chat.appendChild(aiDiv);
+  DOM.chat.scrollTop = DOM.chat.scrollHeight;
+
+  // Build request
+  const model = DOM.selModel.value || 'gpt-3.5-turbo';
+  const body = {
+    model: model,
+    messages: [{role:'system', content: 'You are AgelessHuman AI assistant.'}, ...history.filter(m=>m.role).slice(-10)],
+    stream: true
+  };
+
+  // If using a proxy, call it with same body (proxy should add key server-side).
+  const url = OPENAI_PROXY_URL || 'https://api.openai.com/v1/chat/completions';
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if(!OPENAI_PROXY_URL) headers['Authorization'] = 'Bearer ' + key;
+
+  try{
+    const res = await fetch(url, { method:'POST', headers, body: JSON.stringify(body) });
+    if(!res.ok){
+      // Show helpful debug info for the user
+      const txt = await res.text().catch(()=>res.statusText);
+      aiDiv.querySelector('#stream').textContent = '[Error] ' + res.status + ' — ' + txt;
+      setStatus('Error: server returned ' + res.status);
+      // If likely CORS or 403, show friendly message
+      if(res.status===401 || res.status===403){
+        const el = document.createElement('div');
+        el.className='notice danger';
+        el.style.marginTop='10px';
+        el.innerHTML = 'Authentication failed (401/403). Check your key or use a proxy. See README in the app.';
+        DOM.chat.appendChild(el);
+      } else {
+        const el = document.createElement('div');
+        el.className='notice';
+        el.style.marginTop='10px';
+        el.innerHTML = 'Request failed. If this is a CORS/network issue, use a proxy (Cloudflare Worker / Vercel / Netlify).';
+        DOM.chat.appendChild(el);
+      }
+      DOM.chat.scrollTop = DOM.chat.scrollHeight;
+      return;
+    }
+
+    // Streaming response processing
+    const reader = res.body.getReader();
+    const dec = new TextDecoder('utf-8');
+    let done=false, partial='';
+    while(!done){
+      const {value, done: d} = await reader.read();
+      done = d;
+      if(value){
+        const chunk = dec.decode(value);
+        partial += chunk;
+        // The OpenAI stream sends data in "data: " lines separated by \n\n
+        // We attempt to parse last appended tokens pragmatically.
+        // Split by newline events "data: " and process chunks
+        const events = partial.split(/\n\n/);
+        // Keep last partial in buffer
+        partial = events.pop() || '';
+        for(const ev of events){
+          if(!ev.trim()) continue;
+          if(ev.indexOf('data:')===0){
+            const payload = ev.replace(/^data:\s*/,'').trim();
+            if(payload === '[DONE]') {
+              // stream finished
+              done = true;
+              break;
+            }
+            try {
+              const parsed = JSON.parse(payload);
+              // Depending on API version, the token text is here:
+              const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.text || '';
+              if(delta){
+                // Append to AI stream container
+                const node = aiDiv.querySelector('#stream');
+                node.textContent = node.textContent === '...' ? delta : node.textContent + delta;
+                DOM.chat.scrollTop = DOM.chat.scrollHeight;
+              }
+            } catch(e){
+              // not JSON — append raw
+              const node = aiDiv.querySelector('#stream');
+              node.textContent = node.textContent + payload;
+            }
+          }
+        }
+      }
+    }
+
+    // finalize: read full ai text
+    const aiText = aiDiv.querySelector('#stream').textContent || '';
+    // Save AI message to chat
+    const h2 = loadChat();
+    h2.push({role:'assistant', content: aiText, t: Date.now()});
+    saveChat(h2);
+    renderChat();
+    setStatus('Done');
+
+  } catch (err){
+    console.error(err);
+    aiDiv.querySelector('#stream').textContent = '[Network/CORS error] ' + (err.message || err);
+    setStatus('Network/CORS error — see instructions');
+    // show proxy suggestion
+    const el = document.createElement('div');
+    el.className='notice';
+    el.style.marginTop='10px';
+    el.innerHTML = '<strong>Tip:</strong> If you see CORS or network errors, deploy a small proxy (Cloudflare Worker or Netlify/Vercel serverless) to keep the key private and avoid browser restrictions.';
+    DOM.chat.appendChild(el);
+    DOM.chat.scrollTop = DOM.chat.scrollHeight;
+  }
+}
+
+// Events
+DOM.btnKey.onclick = ()=>showModal();
+DOM.btnSave.onclick = ()=>saveKey(DOM.apiInput.value.trim());
+DOM.btnCancel.onclick = ()=>hideModal();
+DOM.btnClear.onclick = ()=>{ if(confirm('Clear saved API key?')) { clearKey(); } };
+DOM.btnDark.onclick = ()=>{ const cur = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; saveTheme(cur); }
+DOM.sendBtn.onclick = sendMessage;
+DOM.prompt.onkeydown = (e)=>{ if(e.key==='Enter' && (e.ctrlKey || e.metaKey)) sendMessage(); };
+DOM.clearChat.onclick = ()=>{ if(confirm('Clear chat history?')) clearChatStorage(); };
+DOM.btnExport.onclick = ()=>{
+  const data = loadChat();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'agelesshuman-chat.json'; a.click(); URL.revokeObjectURL(url);
+};
+
+window.addEventListener('load', ()=>{
+  loadTheme();
+  const key = loadKey();
+  if(!key) setStatus('No API key saved — click Enter API Key');
+  else setStatus('API key loaded (local only)');
+  // render history
+  renderChat();
+  // populate some small samples
+  const h = loadChat();
+  if(!h.length){
+    const intro = [
+      {role:'assistant',content:'Welcome to AgelessHuman AI — paste your OpenAI API key (sk-...) via Enter API Key and start chatting. If your browser cannot reach OpenAI due to CORS, set up a proxy.','t':Date.now()}
+    ];
+    saveChat(intro); renderChat();
+  }
+});
+</script>
